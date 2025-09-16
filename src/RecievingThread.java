@@ -22,8 +22,7 @@ public class RecievingThread extends Thread {
                 System.out.println("From sender: " + message);
             }
 
-        } catch (
-                IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }

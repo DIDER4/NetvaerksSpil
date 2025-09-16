@@ -1,5 +1,8 @@
 
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +17,10 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.text.*;
 
 public class GUI extends Application {
+
+	//Netværks opsætningen
+	private static DataOutputStream outToServer;
+	private static Socket clientSocket;
 
 	public static final int size = 20; 
 	public static final int scene_height = size * 20 + 100;
@@ -63,6 +70,7 @@ public class GUI extends Application {
 	@Override
 	public void start(Stage primaryStage) {
 		try {
+			multiPlayerOpsætning();
 			GridPane grid = new GridPane();
 			grid.setHgap(10);
 			grid.setVgap(10);
@@ -173,10 +181,17 @@ public class GUI extends Application {
 
 				me.setXpos(x);
 				me.setYpos(y);
+
+
 			}
 		}
 		scoreList.setText(getScoreList());
-	}
+        try {
+            outToServer.writeBytes("MOVE " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 	public String getScoreList() {
 		StringBuffer b = new StringBuffer(100);
@@ -193,6 +208,12 @@ public class GUI extends Application {
 			}
 		}
 		return null;
+	}
+
+
+	public static void multiPlayerOpsætning() throws Exception {
+		clientSocket = new Socket("10.10.139.138", 6789);
+		outToServer = new DataOutputStream(clientSocket.getOutputStream());
 	}
 
 	
