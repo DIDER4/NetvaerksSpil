@@ -9,8 +9,8 @@ public class TCPServer {
         ServerSocket welcomeSocket = new ServerSocket(6789);
         while (true) {
             Socket connectionSocket = welcomeSocket.accept();
-            (new TCPSendThread(connectionSocket)).start();
-            (new RecievingThread(connectionSocket)).start();
+//            (new TCPSendThread(connectionSocket)).start();
+//            (new RecievingThread(connectionSocket)).start();
 
 
         }

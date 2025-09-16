@@ -1,5 +1,3 @@
-package TCP;
-
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStreamReader;
@@ -9,6 +7,7 @@ public class TCPSendThread extends Thread {
 
     Socket connectionSocket;
     String message;
+    Player player;
 
     public TCPSendThread(Socket clientSocket) {
         this.connectionSocket = clientSocket;
