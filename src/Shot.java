@@ -25,3 +25,4 @@ public class Shot {
         }
     }
 }
+// Ekstra kode til commit

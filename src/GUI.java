@@ -345,5 +345,6 @@ public class GUI extends Application {
         shots.removeAll(toRemove);
         scoreList.setText(getScoreList());
     }
+    // ekstra kode til commit
 }
 
