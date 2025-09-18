@@ -16,6 +16,11 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.text.*;
 
+// Animation
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.util.Duration;
+
 public class GUI extends Application {
 
 	public static final int size = 20; 
@@ -33,6 +38,8 @@ public class GUI extends Application {
     private List<Shot> shots = new ArrayList<>(); // Liste til at gemme skud
     private List<int[]> tailPositions = new ArrayList<>(); //Liste til at gemme hale
     private List<int[]> wallHitPositions = new ArrayList<>();
+    public static Image[] playerShotAnim = new Image[5];
+    private List<Player> animatingPlayers = new ArrayList<>();
 
 	public static Player me;
 	public static List<Player> players = new ArrayList<Player>();
@@ -142,9 +149,6 @@ public class GUI extends Application {
                 case SPACE: fireShot();
 
                 default: break;
-
-
-
 				}
 			});
 			
@@ -162,6 +166,11 @@ public class GUI extends Application {
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
+
+        // Animation-initializering som felter
+        for (int i = 0; i < 5; i++) {
+            playerShotAnim[i] = new Image(getClass().getResourceAsStream("Image/playerShot" + (i+1) + ".png"), size, size, false, false);
+        }
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
@@ -305,13 +314,58 @@ public class GUI extends Application {
             // rammer spiller?
             Player p = getPlayerAt(s.getX(), s.getY());
             if (p != null && p != s.getOwner()) {
-                s.getOwner().addPoints(5);
-                p.addPoints(-5);
+                s.getOwner().addPoints(20);
+                p.addPoints(-20);
+
+                int px = p.getXpos();
+                int py = p.getYpos();
+
+                animatingPlayers.add(p); // Mærk som animating
+
+                // Play ramt animation
+                Timeline anim = new Timeline();
+                for (int i = 0; i < playerShotAnim.length; i++) {
+                    final int frame = i;
+                    anim.getKeyFrames().add(new KeyFrame(Duration.millis(50 * i), e -> {
+                        fields[px][py].setGraphic(new ImageView(playerShotAnim[frame]));
+                    }));
+                }
+
+                // Når en spiller bliver ramt spilles animationen færdig og spilleren "respawner" et tilfældigt sted
+                anim.getKeyFrames().add(new KeyFrame(Duration.millis(50 * playerShotAnim.length), e -> {
+                    // Start en 2-sekunders pause før respawning
+                    javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.seconds(2));
+                    pause.setOnFinished(ev -> {
+                    // Find de tomme felter
+                    List<int[]> emptyFields = new ArrayList<>();
+                    for (int i = 0; i < 20; i++) {
+                        for (int j = 0; j < 20; j++) {
+                            if (board[j].charAt(i) == ' ' && getPlayerAt(i, j) == null) {
+                                emptyFields.add(new int[]{i, j});
+                            }
+                        }
+                    }
+
+                    if (!emptyFields.isEmpty()) {
+                        int[] pos = emptyFields.get((int) (Math.random() * emptyFields.size()));
+                        p.setXpos(pos[0]);
+                        p.setYpos(pos[1]);
+                        Image heroImg = switch (p.direction) {
+                            case "right" -> hero_right;
+                            case "left" -> hero_left;
+                            case "up" -> hero_up;
+                            case "down" -> hero_down;
+                            default -> hero_up;
+                        };
+                        fields[pos[0]][pos[1]].setGraphic(new ImageView(heroImg));
+                    }
+                    animatingPlayers.remove(p); // Animation done
+                });
+                    pause.play();
+                }));
+                anim.play();
                 toRemove.add(s);
-                continue;
             }
-
-
 
             // ellers tegn skuddet
             switch (s.getDirection()) {
@@ -330,21 +384,21 @@ public class GUI extends Application {
             }
         }
 
-        // Gentegn alle spillerne for at sikre de forbliver synlige
-        for (Player p : players) {
-            Image heroImg = switch (p.direction) {
-                case "right" -> hero_right;
-                case "left" -> hero_left;
-                case "up" -> hero_up;
-                case "down" -> hero_down;
-                default -> hero_up;
-            };
-            fields[p.getXpos()][p.getYpos()].setGraphic(new ImageView(heroImg));
-        }
-
         shots.removeAll(toRemove);
+
+        // Gentegn alle spillere, der ikke er i animation
+        for (Player pl : players) {
+            if (!animatingPlayers.contains(pl)) {
+                Image heroImg = switch (pl.direction) {
+                    case "right" -> hero_right;
+                    case "left" -> hero_left;
+                    case "up" -> hero_up;
+                    case "down" -> hero_down;
+                    default -> hero_up;
+                };
+                fields[pl.getXpos()][pl.getYpos()].setGraphic(new ImageView(heroImg));
+            }
+        }
         scoreList.setText(getScoreList());
     }
-    // ekstra kode til commit
 }
-
