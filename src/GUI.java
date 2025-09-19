@@ -251,7 +251,7 @@ public class GUI extends Application {
 
 
 	public static void multiPlayerOpsætning() throws Exception {
-		clientSocket = new Socket("localhost", 6789);
+		clientSocket = new Socket("10.10.132.138", 6789);
 		outToServer = new DataOutputStream(clientSocket.getOutputStream());
 		(new RecievingThread(clientSocket)).start();
 	}
@@ -420,4 +420,25 @@ public class GUI extends Application {
 		}
 		scoreList.setText(getScoreList());
 	}
+
+	public static void handleServerMessage(String message) {
+		String[] parts = message.split(" ");
+		if (parts[0].equals("MOVE")) {
+			String name = parts[1];
+			int x = Integer.parseInt(parts[2]);
+			int y = Integer.parseInt(parts[3]);
+			String direction = parts[4];
+			Player p = players.stream().filter(pl -> pl.name.equals(name)).findFirst().orElse(null);
+			if (p == null) {
+				p = new Player(name, x, y, direction);
+				players.add(p);
+			} else {
+				p.setXpos(x);
+				p.setYpos(y);
+				p.setDirection(direction);
+			}
+
+		}
+	}
+
 }
