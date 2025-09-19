@@ -1,5 +1,3 @@
-
-
 import java.io.DataOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -48,9 +46,9 @@ public class GUI extends Application {
 	public static Player me;
 	public static List<Player> players = new ArrayList<Player>();
 
-	private Label[][] fields;
-	private TextArea scoreList;
-	
+	public static Label[][] fields;
+	public static TextArea scoreList;
+
 	private  String[] board = {    // 20x20
 			"wwwwwwwwwwwwwwwwwwww",
 			"w        ww        w",
@@ -184,52 +182,57 @@ public class GUI extends Application {
 	}
 
 	public void playerMoved(int delta_x, int delta_y, String direction) {
-		me.direction = direction;
-		int x = me.getXpos(),y = me.getYpos();
-
-		if (board[y+delta_y].charAt(x+delta_x)=='w') {
-			me.addPoints(-1);
-		} 
-		else {
-			Player p = getPlayerAt(x+delta_x,y+delta_y);
-			if (p!=null) {
-              me.addPoints(10);
-              p.addPoints(-10);
-			} else {
-				me.addPoints(1);
-			
-				fields[x][y].setGraphic(new ImageView(image_floor));
-				x+=delta_x;
-				y+=delta_y;
-
-				if (direction.equals("right")) {
-					fields[x][y].setGraphic(new ImageView(hero_right));
-				};
-				if (direction.equals("left")) {
-					fields[x][y].setGraphic(new ImageView(hero_left));
-				};
-				if (direction.equals("up")) {
-					fields[x][y].setGraphic(new ImageView(hero_up));
-				};
-				if (direction.equals("down")) {
-					fields[x][y].setGraphic(new ImageView(hero_down));
-				};
-
-				me.setXpos(x);
-				me.setYpos(y);
-
-
-			}
-		}
-		scoreList.setText(getScoreList());
+        me.direction = direction;
+        int x = me.getXpos(),y = me.getYpos();
+        boolean moved = false;
+        Player collidedPlayer = null;
+        if (board[y+delta_y].charAt(x+delta_x)=='w') {
+            me.addPoints(-1);
+        }
+        else {
+            Player p = getPlayerAt(x+delta_x,y+delta_y);
+            if (p!=null) {
+                me.addPoints(10);
+                p.addPoints(-10);
+                collidedPlayer = p;
+            } else {
+                me.addPoints(1);
+                fields[x][y].setGraphic(new ImageView(image_floor));
+                x+=delta_x;
+                y+=delta_y;
+                if (direction.equals("right")) {
+                    fields[x][y].setGraphic(new ImageView(hero_right));
+                };
+                if (direction.equals("left")) {
+                    fields[x][y].setGraphic(new ImageView(hero_left));
+                };
+                if (direction.equals("up")) {
+                    fields[x][y].setGraphic(new ImageView(hero_up));
+                };
+                if (direction.equals("down")) {
+                    fields[x][y].setGraphic(new ImageView(hero_down));
+                };
+                me.setXpos(x);
+                me.setYpos(y);
+                moved = true;
+            }
+        }
+        scoreList.setText(getScoreList());
         try {
-            outToServer.writeBytes("MOVE " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
+            // Send MOVE message for myself
+            outToServer.writeBytes("MOVE " + me.name + " " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
+            // Send POINT message for myself
+            outToServer.writeBytes("POINT " + me.name + " " + me.point + "\n");
+            // If collision, send POINT for the other player
+            if (collidedPlayer != null) {
+                outToServer.writeBytes("POINT " + collidedPlayer.name + " " + collidedPlayer.point + "\n");
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-	public String getScoreList() {
+	public static String getScoreList() {
 		StringBuffer b = new StringBuffer(100);
 		for (Player p : players) {
 			b.append(p+"\r\n");
@@ -350,7 +353,7 @@ public class GUI extends Application {
 				// Når en spiller bliver ramt spilles animationen færdig og spilleren "respawner" et tilfældigt sted
 				anim.getKeyFrames().add(new KeyFrame(Duration.millis(50 * playerShotAnim.length), e -> {
 					// Start en 2-sekunders pause før respawning
-					javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.seconds(2));
+					javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.seconds(0));
 					pause.setOnFinished(ev -> {
 						// Find de tomme felter
 						List<int[]> emptyFields = new ArrayList<>();
@@ -418,4 +421,3 @@ public class GUI extends Application {
 		scoreList.setText(getScoreList());
 	}
 }
-
