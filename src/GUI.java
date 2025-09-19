@@ -446,6 +446,8 @@ public class GUI extends Application {
 				p = new Player(name, x, y, direction);
 				players.add(p);
 			} else {
+				// Clear old position
+				fields[p.getXpos()][p.getYpos()].setGraphic(new ImageView(image_floor));
 				p.setXpos(x);
 				p.setYpos(y);
 				p.setDirection(direction);
