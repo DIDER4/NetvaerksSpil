@@ -5,6 +5,7 @@ import java.util.List;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
@@ -73,7 +74,7 @@ public class GUI extends Application {
 			"wwwwwwwwwwwwwwwwwwww"
 	};
 
-	
+
 	// -------------------------------------------
 	// | Maze: (0,0)              | Score: (1,0) |
 	// |-----------------------------------------|
@@ -123,7 +124,7 @@ public class GUI extends Application {
 					case 'w':
 						fields[i][j] = new Label("", new ImageView(image_wall));
 						break;
-					case ' ':					
+					case ' ':
 						fields[i][j] = new Label("", new ImageView(image_floor));
 						break;
 					default: throw new Exception("Illegal field value: "+board[j].charAt(i) );
@@ -149,14 +150,14 @@ public class GUI extends Application {
 			dialog.setHeaderText("Enter your player name:");
 			String playerName = dialog.showAndWait().orElse("Player");
 
-			// Find random empty position
+			// Spawn local player at random empty position
 			int[] pos = getRandomEmptyPosition();
 			me = new Player(playerName, pos[0], pos[1], "up");
 			players.add(me);
 			fields[pos[0]][pos[1]].setGraphic(new ImageView(hero_up));
 			scoreList.setText(getScoreList());
 
-			// Send initial MOVE to server
+			// Announce to server
 			outToServer.writeBytes("MOVE " + me.name + " " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
 			outToServer.writeBytes("POINT " + me.name + " " + me.point + "\n");
 
@@ -170,13 +171,8 @@ public class GUI extends Application {
 				default: break;
 				}
 			});
-			// Remove hardcoded players
-			// me = new Player("Orville",9,4,"up");
-			// players.add(me);
-			// fields[9][4].setGraphic(new ImageView(hero_up));
-			// Player harry = new Player("Harry",14,15,"up");
-			// players.add(harry);
-			// fields[14][15].setGraphic(new ImageView(hero_up));
+
+			// Removed hardcoded default players
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -379,9 +375,9 @@ public class GUI extends Application {
 						}
 
 						if (!emptyFields.isEmpty()) {
-							int[] pos = emptyFields.get((int) (Math.random() * emptyFields.size()));
-							p.setXpos(pos[0]);
-							p.setYpos(pos[1]);
+							int[] pos2 = emptyFields.get((int) (Math.random() * emptyFields.size()));
+							p.setXpos(pos2[0]);
+							p.setYpos(pos2[1]);
 							Image heroImg = switch (p.direction) {
 								case "right" -> hero_right;
 								case "left" -> hero_left;
@@ -389,7 +385,7 @@ public class GUI extends Application {
 								case "down" -> hero_down;
 								default -> hero_up;
 							};
-							fields[pos[0]][pos[1]].setGraphic(new ImageView(heroImg));
+							fields[pos2[0]][pos2[1]].setGraphic(new ImageView(heroImg));
 						}
 						animatingPlayers.remove(p); // Animation done
 					});
@@ -435,39 +431,71 @@ public class GUI extends Application {
 	}
 
 	public static void handleServerMessage(String message) {
+		if (message == null || message.isEmpty()) return;
 		String[] parts = message.split(" ");
-		if (parts[0].equals("MOVE")) {
-			String name = parts[1];
-			int x = Integer.parseInt(parts[2]);
-			int y = Integer.parseInt(parts[3]);
-			String direction = parts[4];
-			Player p = players.stream().filter(pl -> pl.name.equals(name)).findFirst().orElse(null);
-			if (p == null) {
-				p = new Player(name, x, y, direction);
-				players.add(p);
-			} else {
-				// Clear old position
-				fields[p.getXpos()][p.getYpos()].setGraphic(new ImageView(image_floor));
-				p.setXpos(x);
-				p.setYpos(y);
-				p.setDirection(direction);
+		if (parts.length == 0) return;
+		switch (parts[0]) {
+			case "MOVE": {
+				if (parts.length < 5) return;
+				String name = parts[1];
+				int x = Integer.parseInt(parts[2]);
+				int y = Integer.parseInt(parts[3]);
+				String direction = parts[4];
+				Platform.runLater(() -> {
+					Player p = players.stream().filter(pl -> pl.name.equals(name)).findFirst().orElse(null);
+					if (p == null) {
+						p = new Player(name, x, y, direction);
+						players.add(p);
+					} else {
+						// Clear old position
+						fields[p.getXpos()][p.getYpos()].setGraphic(new ImageView(image_floor));
+						p.setXpos(x);
+						p.setYpos(y);
+						p.setDirection(direction);
+					}
+					Image heroImg = switch (direction) {
+						case "right" -> hero_right;
+						case "left" -> hero_left;
+						case "up" -> hero_up;
+						case "down" -> hero_down;
+						default -> hero_up;
+					};
+					fields[x][y].setGraphic(new ImageView(heroImg));
+					scoreList.setText(getScoreList());
+				});
+				break;
 			}
-
+			case "POINT": {
+				if (parts.length < 3) return;
+				String name = parts[1];
+				int points = Integer.parseInt(parts[2]);
+				Platform.runLater(() -> {
+					Player p = players.stream().filter(pl -> pl.name.equals(name)).findFirst().orElse(null);
+					if (p == null) {
+						p = new Player(name, 0, 0, "up");
+						players.add(p);
+					}
+					p.point = points;
+					scoreList.setText(getScoreList());
+				});
+				break;
+			}
+			default:
+				// ignore other message types
 		}
 	}
 
-	// Add helper to find random empty position
+	// Helper: find random empty position
 	private int[] getRandomEmptyPosition() {
-        List<int[]> emptyFields = new ArrayList<>();
-        for (int i = 0; i < 20; i++) {
-            for (int j = 0; j < 20; j++) {
-                if (board[j].charAt(i) == ' ' && getPlayerAt(i, j) == null) {
-                    emptyFields.add(new int[]{i, j});
-                }
-            }
-        }
-        if (emptyFields.isEmpty()) return new int[]{1, 1}; // fallback
-        return emptyFields.get((int) (Math.random() * emptyFields.size()));
-    }
-
+		List<int[]> emptyFields = new ArrayList<>();
+		for (int i = 0; i < 20; i++) {
+			for (int j = 0; j < 20; j++) {
+				if (board[j].charAt(i) == ' ' && getPlayerAt(i, j) == null) {
+					emptyFields.add(new int[]{i, j});
+				}
+			}
+		}
+		if (emptyFields.isEmpty()) return new int[]{1, 1};
+		return emptyFields.get((int) (Math.random() * emptyFields.size()));
+	}
 }
