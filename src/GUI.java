@@ -17,6 +17,7 @@ import javafx.scene.text.*;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.util.Duration;
+import javafx.scene.control.TextInputDialog;
 
 public class GUI extends Application {
 
@@ -142,6 +143,23 @@ public class GUI extends Application {
 			primaryStage.setScene(scene);
 			primaryStage.show();
 
+			// Prompt for player name
+			TextInputDialog dialog = new TextInputDialog("Player");
+			dialog.setTitle("Choose Name");
+			dialog.setHeaderText("Enter your player name:");
+			String playerName = dialog.showAndWait().orElse("Player");
+
+			// Find random empty position
+			int[] pos = getRandomEmptyPosition();
+			me = new Player(playerName, pos[0], pos[1], "up");
+			players.add(me);
+			fields[pos[0]][pos[1]].setGraphic(new ImageView(hero_up));
+			scoreList.setText(getScoreList());
+
+			// Send initial MOVE to server
+			outToServer.writeBytes("MOVE " + me.name + " " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
+			outToServer.writeBytes("POINT " + me.name + " " + me.point + "\n");
+
 			scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
 				switch (event.getCode()) {
 				case UP:    playerMoved(0,-1,"up");    break;
@@ -152,18 +170,13 @@ public class GUI extends Application {
 				default: break;
 				}
 			});
-			
-            // Setting up standard players
-			
-			me = new Player("Orville",9,4,"up");
-			players.add(me);
-			fields[9][4].setGraphic(new ImageView(hero_up));
-
-			Player harry = new Player("Harry",14,15,"up");
-			players.add(harry);
-			fields[14][15].setGraphic(new ImageView(hero_up));
-
-			scoreList.setText(getScoreList());
+			// Remove hardcoded players
+			// me = new Player("Orville",9,4,"up");
+			// players.add(me);
+			// fields[9][4].setGraphic(new ImageView(hero_up));
+			// Player harry = new Player("Harry",14,15,"up");
+			// players.add(harry);
+			// fields[14][15].setGraphic(new ImageView(hero_up));
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
@@ -440,5 +453,19 @@ public class GUI extends Application {
 
 		}
 	}
+
+	// Add helper to find random empty position
+	private int[] getRandomEmptyPosition() {
+        List<int[]> emptyFields = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            for (int j = 0; j < 20; j++) {
+                if (board[j].charAt(i) == ' ' && getPlayerAt(i, j) == null) {
+                    emptyFields.add(new int[]{i, j});
+                }
+            }
+        }
+        if (emptyFields.isEmpty()) return new int[]{1, 1}; // fallback
+        return emptyFields.get((int) (Math.random() * emptyFields.size()));
+    }
 
 }
