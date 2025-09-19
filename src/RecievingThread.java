@@ -17,6 +17,7 @@ public class RecievingThread extends Thread {
             while(true){
                 String message = inFromAfsender.readLine();
                 GUI.handleServerMessage(message);
+                System.out.println("From sender: " + message);
             }
 //            System.out.println("Forbundet til server.");
 
