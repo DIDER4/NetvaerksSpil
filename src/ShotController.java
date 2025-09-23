@@ -209,4 +209,4 @@ public class ShotController {
     }
 }
 
-// Unødvendig committe-kode
+// Unødvendig committe-kode2

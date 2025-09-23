@@ -383,4 +383,4 @@ public class GUI extends Application {
     }
 }
 
-// Unødvendig committe-kode
+// Unødvendig committe-kode2
