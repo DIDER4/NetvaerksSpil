@@ -260,7 +260,7 @@ public class GUI extends Application {
 
 
 	public static void multiPlayerOpsætning() throws Exception {
-		clientSocket = new Socket("10.10.132.138", 6789);
+		clientSocket = new Socket("localhost", 6789);
 		outToServer = new DataOutputStream(clientSocket.getOutputStream());
 		(new RecievingThread(clientSocket)).start();
 	}

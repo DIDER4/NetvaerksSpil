@@ -25,6 +25,7 @@ public class TCPServer {
 
             clients.add(outToClient);
             System.out.println("Connected clients: " + clients.size());
+            broadcast(connectionSocket.getRemoteSocketAddress() + "Joined the game", null);
             new Thread(() -> handleClient(connectionSocket, outToClient)).start();
         }
     }
@@ -53,10 +54,6 @@ public class TCPServer {
             System.out.println("Client disconnected: " + outToClient);
             System.out.println("Connected clients: " + clients.size());
         }
-    }
-
-    private static void broadcast(String message) {
-        broadcast(message, null);
     }
 
     private static void broadcast(String message, DataOutputStream exclude) {
