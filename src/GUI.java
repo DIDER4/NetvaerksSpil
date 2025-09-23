@@ -34,16 +34,14 @@ public class GUI extends Application {
     public static Image image_wall;
     public static Image hero_right, hero_left, hero_up, hero_down;
 
+    private static ShotController shotController;
+
     public static Image shot_Right, shot_Left, shot_Up, shot_Down;
 
     public static Image shot_Tail_Horizontal;
     public static Image shot_Tail_Vertical;
 
-    private List<Shot> shots = new ArrayList<>(); // Liste til at gemme skud
-    private List<int[]> tailPositions = new ArrayList<>(); //Liste til at gemme hale
-    private List<int[]> wallHitPositions = new ArrayList<>();
     public static Image[] playerShotAnim = new Image[5];
-    private List<Player> animatingPlayers = new ArrayList<>();
 
     public static Player me;
     public static List<Player> players = new ArrayList<Player>();
@@ -162,6 +160,13 @@ public class GUI extends Application {
             outToServer.writeBytes("MOVE " + me.name + " " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
             outToServer.writeBytes("POINT " + me.name + " " + me.point + "\n");
 
+            shotController = new ShotController(
+                    board, fields, players, playerShotAnim,
+                    shot_Left, shot_Right, shot_Up, shot_Down,
+                    shot_Tail_Horizontal, shot_Tail_Vertical,
+                    hero_left, hero_right, hero_up, hero_down
+            );
+
             scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
                 switch (event.getCode()) {
                     case UP:
@@ -177,7 +182,14 @@ public class GUI extends Application {
                         playerMoved(+1, 0, "right");
                         break;
                     case SPACE:
-                        fireShot();
+                        shotController.fireShot(me);
+                        try {
+                            outToServer.writeBytes("SHOT " + me.name + " " + me.getXpos() + " " + me.getYpos() + " " + me.getDirection() + "\n");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        break;
+
                     default:
                         break;
                 }
@@ -192,12 +204,15 @@ public class GUI extends Application {
             playerShotAnim[i] = new Image(getClass().getResourceAsStream("Image/playerShot" + (i + 1) + ".png"), size, size, false, false);
         }
 
+
+
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
-                updateShots();
+                shotController.updateShots();
             }
         };
+
         timer.start();
     }
 
@@ -272,185 +287,11 @@ public class GUI extends Application {
         return null;
     }
 
-
 	public static void multiPlayerOpsætning() throws Exception {
 		clientSocket = new Socket("localhost", 6789);
 		outToServer = new DataOutputStream(clientSocket.getOutputStream());
 		(new RecievingThread(clientSocket)).start();
 	}
-
-    public void fireShot() {
-        Shot s = new Shot(me.getXpos(), me.getYpos(), me.direction, me);
-        shots.add(s);
-    }
-
-    public void updateShots() {
-        List<Shot> toRemove = new ArrayList<>();
-
-        // Fjern wallhit billeder
-        for (int[] pos : wallHitPositions) {
-            fields[pos[0]][pos[1]].setGraphic(new ImageView(image_floor));
-        }
-        wallHitPositions.clear();
-
-        // 1. Fjern haler fra tidligere positioner
-        for (int[] pos : tailPositions) {
-            fields[pos[0]][pos[1]].setGraphic(new ImageView(image_floor));
-        }
-        tailPositions.clear();
-
-        for (Shot s : shots) {
-            // fjern gammel grafik
-            fields[s.getX()][s.getY()].setGraphic(new ImageView(image_floor));
-
-            // 2. Tegn hale og gem position
-            switch (s.getDirection()) {
-                case "left":
-                case "right":
-                    fields[s.getX()][s.getY()].setGraphic(new ImageView(shot_Tail_Horizontal));
-                    break;
-                case "up":
-                case "down":
-                    fields[s.getX()][s.getY()].setGraphic(new ImageView(shot_Tail_Vertical));
-                    break;
-            }
-            tailPositions.add(new int[]{s.getX(), s.getY()});
-
-            s.move();
-
-            // rammer væg?
-            if (board[s.getY()].charAt(s.getX()) == 'w') {
-                int prevX = s.getX();
-                int prevY = s.getY();
-                switch (s.getDirection()) {
-                    case "left":
-                        prevX += 1;
-                        break;
-                    case "right":
-                        prevX -= 1;
-                        break;
-                    case "up":
-                        prevY += 1;
-                        break;
-                    case "down":
-                        prevY -= 1;
-                        break;
-                }
-                // Viser wallhittingimage før fjernelse af skud
-                switch (s.getDirection()) {
-                    case "left":
-                        fields[prevX][prevY].setGraphic(new ImageView(
-                                new Image(getClass().getResourceAsStream("Image/fireWallWest.png"), size, size, false, false)));
-                        break;
-                    case "right":
-                        fields[prevX][prevY].setGraphic(new ImageView(
-                                new Image(getClass().getResourceAsStream("Image/fireWallEast.png"), size, size, false, false)));
-                        break;
-                    case "up":
-                        fields[prevX][prevY].setGraphic(new ImageView(
-                                new Image(getClass().getResourceAsStream("Image/fireWallNorth.png"), size, size, false, false)));
-                        break;
-                    case "down":
-                        fields[prevX][prevY].setGraphic(new ImageView(
-                                new Image(getClass().getResourceAsStream("Image/fireWallSouth.png"), size, size, false, false)));
-                        break;
-                }
-                // gem wallhitposition for senere fjernelse
-                wallHitPositions.add(new int[]{prevX, prevY});
-                toRemove.add(s);
-                continue;
-            }
-
-            // rammer spiller?
-            Player p = getPlayerAt(s.getX(), s.getY());
-            if (p != null && p != s.getOwner()) {
-                s.getOwner().addPoints(20);
-                p.addPoints(-20);
-
-                int px = p.getXpos();
-                int py = p.getYpos();
-
-                animatingPlayers.add(p); // Mærk som animating
-
-                // Play ramt animation
-                Timeline anim = new Timeline();
-                for (int i = 0; i < playerShotAnim.length; i++) {
-                    final int frame = i;
-                    anim.getKeyFrames().add(new KeyFrame(Duration.millis(50 * i), e -> {
-                        fields[px][py].setGraphic(new ImageView(playerShotAnim[frame]));
-                    }));
-                }
-
-                // Når en spiller bliver ramt spilles animationen færdig og spilleren "respawner" et tilfældigt sted
-                anim.getKeyFrames().add(new KeyFrame(Duration.millis(50 * playerShotAnim.length), e -> {
-                    // Start en 2-sekunders pause før respawning
-                    javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.seconds(0));
-                    pause.setOnFinished(ev -> {
-                        // Find de tomme felter
-                        List<int[]> emptyFields = new ArrayList<>();
-                        for (int i = 0; i < 20; i++) {
-                            for (int j = 0; j < 20; j++) {
-                                if (board[j].charAt(i) == ' ' && getPlayerAt(i, j) == null) {
-                                    emptyFields.add(new int[]{i, j});
-                                }
-                            }
-                        }
-
-                        if (!emptyFields.isEmpty()) {
-                            int[] pos2 = emptyFields.get((int) (Math.random() * emptyFields.size()));
-                            p.setXpos(pos2[0]);
-                            p.setYpos(pos2[1]);
-                            Image heroImg = switch (p.direction) {
-                                case "right" -> hero_right;
-                                case "left" -> hero_left;
-                                case "up" -> hero_up;
-                                case "down" -> hero_down;
-                                default -> hero_up;
-                            };
-                            fields[pos2[0]][pos2[1]].setGraphic(new ImageView(heroImg));
-                        }
-                        animatingPlayers.remove(p); // Animation done
-                    });
-                    pause.play();
-                }));
-                anim.play();
-                toRemove.add(s);
-            }
-
-            // ellers tegn skuddet
-            switch (s.getDirection()) {
-                case "left":
-                    fields[s.getX()][s.getY()].setGraphic(new ImageView(shot_Left));
-                    break;
-                case "right":
-                    fields[s.getX()][s.getY()].setGraphic(new ImageView(shot_Right));
-                    break;
-                case "up":
-                    fields[s.getX()][s.getY()].setGraphic(new ImageView(shot_Up));
-                    break;
-                case "down":
-                    fields[s.getX()][s.getY()].setGraphic(new ImageView(shot_Down));
-                    break;
-            }
-        }
-
-        shots.removeAll(toRemove);
-
-        // Gentegn alle spillere, der ikke er i animation
-        for (Player pl : players) {
-            if (!animatingPlayers.contains(pl)) {
-                Image heroImg = switch (pl.direction) {
-                    case "right" -> hero_right;
-                    case "left" -> hero_left;
-                    case "up" -> hero_up;
-                    case "down" -> hero_down;
-                    default -> hero_up;
-                };
-                fields[pl.getXpos()][pl.getYpos()].setGraphic(new ImageView(heroImg));
-            }
-        }
-        scoreList.setText(getScoreList());
-    }
 
     // Håndter samtlige beskeder fra server
     public static void handleServerMessage(String message) {
@@ -503,10 +344,29 @@ public class GUI extends Application {
                 });
                 break;
             }
+            case "SHOT": {
+                if (parts.length < 5) return;
+                String name = parts[1];
+                int x = Integer.parseInt(parts[2]);
+                int y = Integer.parseInt(parts[3]);
+                String direction = parts[4];
+                Platform.runLater(() -> {
+                    Player shooter = players.stream().filter(pl -> pl.name.equals(name)).findFirst().orElse(null);
+                    if (shooter == null) {
+                        // Hvis spilleren ikke findes, opret en ny (burde ikke ske, men for sikkerhed)
+                        shooter = new Player(name, x, y, direction);
+                        players.add(shooter);
+                    }
+                    // Opret skuddet på den position og retning, som beskeden angiver
+                    shotController.fireShotFromNetwork(shooter, x, y, direction);
+                });
+                break;
+            }
             default:
                 // ignore other message types
         }
     }
+
 
     // Helper: find random empty position
     private int[] getRandomEmptyPosition() {
@@ -522,3 +382,5 @@ public class GUI extends Application {
         return emptyFields.get((int) (Math.random() * emptyFields.size()));
     }
 }
+
+// Unødvendig committe-kode2
