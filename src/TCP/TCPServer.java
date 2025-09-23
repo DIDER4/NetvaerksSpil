@@ -25,6 +25,7 @@ public class TCPServer {
 
             clients.add(outToClient);
             System.out.println("Connected clients: " + clients.size());
+            broadcast(connectionSocket.getRemoteSocketAddress() + "Joined the game", null);
             new Thread(() -> handleClient(connectionSocket, outToClient)).start();
         }
     }

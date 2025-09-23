@@ -273,11 +273,11 @@ public class GUI extends Application {
     }
 
 
-    public static void multiPlayerOpsætning() throws Exception {
-        clientSocket = new Socket("192.168.0.202", 6789);
-        outToServer = new DataOutputStream(clientSocket.getOutputStream());
-        (new RecievingThread(clientSocket)).start();
-    }
+	public static void multiPlayerOpsætning() throws Exception {
+		clientSocket = new Socket("localhost", 6789);
+		outToServer = new DataOutputStream(clientSocket.getOutputStream());
+		(new RecievingThread(clientSocket)).start();
+	}
 
     public void fireShot() {
         Shot s = new Shot(me.getXpos(), me.getYpos(), me.direction, me);
