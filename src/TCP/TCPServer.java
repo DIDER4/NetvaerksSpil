@@ -49,14 +49,11 @@ public class TCPServer {
             clients.remove(outToClient);
             try {
                 socket.close();
-            } catch (IOException ignored) {}
+            } catch (IOException ignored) {
+            }
             System.out.println("Client disconnected: " + outToClient);
             System.out.println("Connected clients: " + clients.size());
         }
-    }
-
-    private static void broadcast(String message) {
-        broadcast(message, null);
     }
 
     private static void broadcast(String message, DataOutputStream exclude) {

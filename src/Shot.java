@@ -11,17 +11,36 @@ public class Shot {
         this.owner = owner;
     }
 
-    public int getX() { return x; }
-    public int getY() { return y; }
-    public String getDirection() { return direction; }
-    public Player getOwner() { return owner; }
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public String getDirection() {
+        return direction;
+    }
+
+    public Player getOwner() {
+        return owner;
+    }
 
     public void move() {
         switch (direction) {
-            case "up":    y--; break;
-            case "down":  y++; break;
-            case "left":  x--; break;
-            case "right": x++; break;
+            case "up":
+                y--;
+                break;
+            case "down":
+                y++;
+                break;
+            case "left":
+                x--;
+                break;
+            case "right":
+                x++;
+                break;
         }
     }
 }
