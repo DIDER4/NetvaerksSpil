@@ -382,3 +382,5 @@ public class GUI extends Application {
         return emptyFields.get((int) (Math.random() * emptyFields.size()));
     }
 }
+
+// Unødvendig committe-kode
