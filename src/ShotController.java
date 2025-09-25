@@ -1,4 +1,4 @@
-
+// fake kode til at committe
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
